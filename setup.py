@@ -5,7 +5,7 @@ requires = [
 ]
 
 setup(
-    name='chain33-sdk',
+    name='chain33-sdk-python',
     description='chain33 sdk python implementation',
     version='1.0.1',
     packages=find_packages(),
