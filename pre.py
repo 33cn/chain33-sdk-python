@@ -1,8 +1,10 @@
+import binascii
 import hashlib
+from math import ceil
 from typing import List
 
 import ecdsa
-from ecdsa import ellipticcurve
+from ecdsa import ellipticcurve, numbertheory
 from crypto import signer
 
 baseN = ecdsa.SECP256k1.order
@@ -37,6 +39,18 @@ class EccPoint():
     def __mul__(self, other:int):
         return EccPoint(self.point * other)
 
+def kdf(z, klen): # z为16进制表示的比特串（str），klen为密钥长度（单位byte）
+    klen = int(klen)
+    ct = 0x00000001
+    rcnt = ceil(klen/32)
+    zin = [i for i in bytes.fromhex(z)]
+    ha = b""
+    for i in range(rcnt):
+        msg = zin  + [i for i in binascii.a2b_hex(('%08x' % ct).encode('utf8'))]
+        ha = ha + hashlib.sha256(bytes(msg)).digest()
+        ct += 1
+    return ha[0: klen * 2]
+
 def generateEncryptKey(pubOwner):
     pubOwnerKey = ecdsa.VerifyingKey.from_string(bytes.fromhex(pubOwner), ecdsa.SECP256k1, hashlib.sha256)
 
@@ -47,28 +61,25 @@ def generateEncryptKey(pubOwner):
     result = pubOwnerKey.pubkey.point * sum
 
     encKey = ecdsa.VerifyingKey.from_public_point(result, ecdsa.SECP256k1, hashlib.sha256).to_string(encoding="compressed")
-    result = encKey[1:]
-    return result, priv_r.get_verifying_key().to_string(encoding="compressed").hex(), priv_u.get_verifying_key().to_string(encoding="compressed").hex()
+    return kdf(encKey.hex(), 32), priv_r.get_verifying_key().to_string(encoding="compressed").hex(), priv_u.get_verifying_key().to_string(encoding="compressed").hex()
+
+# def hashToModInt(digest):
+#     orderBits = bit_length(baseN)
+#     orderBytes = (orderBits + 7) / 8
+#     if len(digest) > orderBytes:
+#         digest = digest[:orderBytes]
+#
+#     ret = int(digest.hex(), 16)
+#     excess = len(digest) * 8 - orderBits
+#     if excess > 0:
+#         return ret >> excess
+#     return ret
 
 def hashToModInt(digest):
     sum = int(digest, 16)
     order_minus_1 = baseN - 1
 
     return (sum % order_minus_1) + 1
-
-def egcd(a, b):
-    if a == 0:
-        return (b, 0, 1)
-    else:
-        g, y, x = egcd(b % a, a)
-        return (g, x - (b // a) * y, y)
-
-def modinv(a, m):
-    g, x, y = egcd(a, m)
-    if g != 1:
-        raise Exception('modular inverse does not exist')
-    else:
-        return x % m
 
 def makeShamirPolyCoeff(threshold)->List[int]:
     coeffs = list()
@@ -85,7 +96,7 @@ def hornerPolyEval(coeff: List[int], x: int) -> int:
 
 def calcPart(a:int, b:int)->int:
     p = (a - b) % baseN
-    res = (a * modinv(p, baseN)) % baseN
+    res = (a * numbertheory.inverse_mod(p, baseN)) % baseN
     return res
 
 def calcLambdaCoeff(id_i: int, selected_ids: List[int]) -> int:
@@ -115,7 +126,7 @@ def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFra
     dAlice = aAliceHash.digest().hex()
     dAliceBN = hashToModInt(dAlice)
 
-    f0 = (privInt * modinv(dAliceBN, baseN)) % baseN
+    f0 = (privInt * numbertheory.inverse_mod(dAliceBN, baseN)) % baseN
 
     precursorPub = precursor.get_verifying_key().to_string(encoding="compressed").hex()
     kfrags = list()
@@ -194,4 +205,4 @@ def assembleReencryptFragment(privRecipient:str, reKeyFrags:List[ReKeyFrag])->by
 
     eckey = ecdsa.VerifyingKey.from_public_point(share_key.point, ecdsa.SECP256k1, hashlib.sha256).\
         to_string(encoding="compressed")
-    return eckey[1:]
+    return kdf(eckey.hex(), 32)
