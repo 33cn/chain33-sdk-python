@@ -8,6 +8,7 @@ import copy
 from crypto import signer
 import hashlib
 from crypto.gm import sm2
+from crypto.ed25519 import ed25519Signer
 
 MaxTxSize = 100000
 MinFee = 100000
@@ -32,6 +33,11 @@ class Transaction():
             sm2util = sm2.SM2Util()
             result = sm2util.verify(data, bytes.hex(self.tx.signature.pubkey), bytes.hex(self.tx.signature.signature), "0")
             return result
+        elif self.tx.signature.ty == 2:
+            copyTx = CopyTx(self.tx)
+            data = copyTx.SerializeToString()
+            result = ed25519Signer.verify(data, self.tx.signature.signature, self.tx.signature.pubkey.hex())
+            return result
         else:
             raise ValueError(
                 "Error: signType is not correct."
@@ -52,6 +58,10 @@ class Transaction():
             self.tx.signature.ty = 3
             sm2util = sm2.SM2Util()
             self.tx.signature.signature = bytes.fromhex(sm2util.sign(data, acc.privateKey, "0"))
+            return self.tx
+        elif acc.signType == signer.ED25519:
+            self.tx.signature.ty = 2
+            self.tx.signature.signature = ed25519Signer.sign(data, acc.privateKey)
             return self.tx
         else:
             raise ValueError(
@@ -125,6 +135,10 @@ def Sign(tx,acc)->tx_pb2.Transaction:
         sm2util = sm2.SM2Util()
         tx.signature.signature = bytes.fromhex(sm2util.sign(data,acc.privateKey,'0'))
         return tx
+    elif acc.signType == signer.ED25519:
+        tx.signature.ty = 2
+        tx.signature.signature = ed25519Signer.sign(data, acc.privateKey)
+        return tx
     else:
         raise ValueError(
             "Error: signType is not correct."
@@ -141,6 +155,11 @@ def CheckSign(tx)->bool:
         data = copyTx.SerializeToString()
         sm2util = sm2.SM2Util()
         result = sm2util.verify(data, bytes.hex(tx.signature.pubkey), bytes.hex(tx.signature.signature), "0")
+        return result
+    elif tx.signature.ty == 2:
+        copyTx = CopyTx(tx)
+        data = copyTx.SerializeToString()
+        result = ed25519Signer.verify(data, tx.signature.signature, tx.signature.pubkey.hex())
         return result
     else:
         raise ValueError(
@@ -254,6 +273,11 @@ if __name__ == '__main__':
     tx = Transaction(tx1)
     tx.Sign(acc1)
     assert tx.CheckSign()
+
+    accE = account.newAccount(signer.ED25519)
+    txE = Transaction(tx1)
+    txE.Sign(accE)
+    assert txE.CheckSign()
 
     tx2 = createTx(execer=bytes("coins",encoding='utf-8'),payload=bytes("hello world",encoding='utf-8'),expire=0,to="xxxxx")
     acc = account.newAccount(signer.SECP256K1)

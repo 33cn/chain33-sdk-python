@@ -3,6 +3,7 @@ import ecdsa
 
 SECP256K1 = "secp256k1"
 SM2       = "sm2"
+ED25519   = "ed25519"
 
 def generatePrivateKey()->str:
     private_key = ecdsa.util.randrange(ecdsa.SECP256k1.order)

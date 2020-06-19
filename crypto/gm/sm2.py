@@ -1,4 +1,3 @@
-import binascii
 import random
 
 from gmssl import sm3
