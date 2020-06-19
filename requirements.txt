@@ -3,3 +3,4 @@ gmssl==3.2.1
 requests==2.9.1
 protobuf==3.12.2
 pycryptodome==3.9.7
+ed25519==1.5
