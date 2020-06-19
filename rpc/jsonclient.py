@@ -123,3 +123,19 @@ if __name__ == '__main__':
       time.sleep(5)
       response=client.QueryTransaction(txhash)
       print(response)
+
+      # 本地构造交易
+      transfer = tx_pb2.AssetsTransfer()
+      transfer.amount = 100000
+      transfer.note = bytes("this a test", encoding='utf-8')
+      transfer.to = '19MJmA7GcE1NfMwdGqgLJioBjVbzQnVYvR'
+      action = tx_pb2.CoinsAction(transfer=transfer)
+      action.ty = 1
+      tx = transaction.createTx(execer=bytes("coins", encoding='utf-8'), payload=action.SerializeToString(), expire=0,
+                   to="19MJmA7GcE1NfMwdGqgLJioBjVbzQnVYvR")
+      signTx = transaction.Sign(tx,acc)
+      hexTx = bytes.hex(signTx.SerializeToString())
+      response = client.SendTransaction(hexTx)
+      time.sleep(5)
+      response=client.QueryTransaction(txhash)
+      print(response)

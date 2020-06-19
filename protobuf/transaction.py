@@ -149,7 +149,7 @@ def CheckSign(tx)->bool:
 
     return False
 # 构建交易
-def createTx(execer,payload,expire,to)->tx_pb2.Transaction:
+def createTx(execer:bytes,payload:bytes,expire:int,to:str)->tx_pb2.Transaction:
     tx1 =tx_pb2.Transaction()
     tx1.execer = execer
     tx1.payload = payload
@@ -286,3 +286,16 @@ if __name__ == '__main__':
     #验签
     assert txgroup.CheckSign()
     print('test sucessfully!')
+
+    # 本地构造转账交易
+    transfer = tx_pb2.AssetsTransfer()
+    transfer.amount = 100000
+    transfer.note = bytes("this a test", encoding='utf-8')
+    transfer.to = '19MJmA7GcE1NfMwdGqgLJioBjVbzQnVYvR'
+    action = tx_pb2.CoinsAction(transfer=transfer)
+    action.ty = 1
+    tx = createTx(execer=bytes("coins", encoding='utf-8'), payload=action.SerializeToString(), expire=0,
+                              to="19MJmA7GcE1NfMwdGqgLJioBjVbzQnVYvR")
+    tx = Transaction(tx)
+    tx.Sign(acc1)
+    assert tx.CheckSign()
