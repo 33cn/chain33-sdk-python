@@ -60,3 +60,4 @@ if __name__ == '__main__':
     sig = ed25519Signer.sign(data, "97ac0e086e363315a8f30633b6d740b763533ed0439d9c696cd147b9a24437190221cf1192e7c3de734893d112ff7696e4d35bf265736e08ac708110d0b7ae97")
     ret = ed25519Signer.verify(data, sig, "0221cf1192e7c3de734893d112ff7696e4d35bf265736e08ac708110d0b7ae97")
     assert ret == True
+    
