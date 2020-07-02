@@ -3,7 +3,10 @@ import hashlib
 version = "00"
 addressChecksumLen = 4
 Base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+# MaxExecNameLength 执行器名最大长度
+MaxExecNameLength = 100
 
+addrSeed = bytes("address seed bytes for public key",encoding="utf-8")
 def normalise_bytes(buffer_object):
     return memoryview(buffer_object).cast('B')
 
@@ -43,3 +46,45 @@ def pubKeyToAddr(pub_key):
 
     address = base58encode(full_payload.hex())
     return address
+
+def sha2Sum(b)->bytes:
+    sha256 = hashlib.sha256()
+    sha256.update(b)
+    first = sha256.digest()
+    sha256 = hashlib.sha256()
+    sha256.update(first)
+    second=sha256.digest()
+    return second
+
+def rimpHash(b:bytes)->bytes:
+    hash_256 = hashlib.sha256()
+    hash_256.update(b)
+    hash_256_value = hash_256.digest()
+    obj = hashlib.new('ripemd160', hash_256_value)
+    ripemd_160_value = obj.digest()
+    return ripemd_160_value
+
+# 获取合约地址
+def getExecAddress(name:str)->str:
+    if len(name) > MaxExecNameLength:
+        raise Exception('ExecName too length')
+    buf = bytes(name, encoding='utf-8')
+    data = addrSeed + buf
+    pub = sha2Sum(data)
+    rimp = rimpHash(pub)
+    ad = bytearray(25)
+    ad[0]=0
+    for i in range(0,20,1):
+        ad[i+1]=rimp[i]
+    sh = sha2Sum(ad[0:21])
+    sum = sh[0:4]
+    for i in range(0,4,1):
+        ad[i+21]=sum[i]
+    result = base58encode(ad.hex())
+    return result
+
+
+if __name__ == '__main__':
+   result = getExecAddress('ticket')
+   print(result)
+   assert result == '16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp'
