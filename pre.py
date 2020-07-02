@@ -5,9 +5,12 @@ from typing import List
 
 import ecdsa
 from ecdsa import ellipticcurve, numbertheory
+from ecdsa.util import bit_length
+
 from crypto import signer
 
 baseN = ecdsa.SECP256k1.order
+encKeyLength = 16
 
 class KFrag:
     def __init__(self, random, value, precurpub):
@@ -49,7 +52,7 @@ def kdf(z, klen): # z为16进制表示的比特串（str），klen为密钥长�
         msg = zin  + [i for i in binascii.a2b_hex(('%08x' % ct).encode('utf8'))]
         ha = ha + hashlib.sha256(bytes(msg)).digest()
         ct += 1
-    return ha[0: klen * 2]
+    return ha[0: klen]
 
 def generateEncryptKey(pubOwner):
     pubOwnerKey = ecdsa.VerifyingKey.from_string(bytes.fromhex(pubOwner), ecdsa.SECP256k1, hashlib.sha256)
@@ -61,25 +64,25 @@ def generateEncryptKey(pubOwner):
     result = pubOwnerKey.pubkey.point * sum
 
     encKey = ecdsa.VerifyingKey.from_public_point(result, ecdsa.SECP256k1, hashlib.sha256).to_string(encoding="compressed")
-    return kdf(encKey.hex(), 32), priv_r.get_verifying_key().to_string(encoding="compressed").hex(), priv_u.get_verifying_key().to_string(encoding="compressed").hex()
-
-# def hashToModInt(digest):
-#     orderBits = bit_length(baseN)
-#     orderBytes = (orderBits + 7) / 8
-#     if len(digest) > orderBytes:
-#         digest = digest[:orderBytes]
-#
-#     ret = int(digest.hex(), 16)
-#     excess = len(digest) * 8 - orderBits
-#     if excess > 0:
-#         return ret >> excess
-#     return ret
+    return kdf(encKey.hex(), encKeyLength), priv_r.get_verifying_key().to_string(encoding="compressed").hex(), priv_u.get_verifying_key().to_string(encoding="compressed").hex()
 
 def hashToModInt(digest):
-    sum = int(digest, 16)
-    order_minus_1 = baseN - 1
+    orderBits = bit_length(baseN)
+    orderBytes = int((orderBits + 7) / 8)
+    if len(digest) > orderBytes:
+        digest = digest[:orderBytes]
 
-    return (sum % order_minus_1) + 1
+    ret = int(digest.hex(), 16)
+    excess = len(digest) * 8 - orderBits
+    if excess > 0:
+        return ret >> excess
+    return ret
+
+# def hashToModInt(digest):
+#     sum = int(digest, 16)
+#     order_minus_1 = baseN - 1
+#
+#     return (sum % order_minus_1) + 1
 
 def makeShamirPolyCoeff(threshold)->List[int]:
     coeffs = list()
@@ -119,11 +122,11 @@ def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFra
     pubRecipientKey = ecdsa.VerifyingKey.from_string(bytes.fromhex(pubRecipient), ecdsa.SECP256k1, hashlib.sha256)
 
     dh_alice_point = signer.ecdh_point(pubRecipientKey.pubkey.point, precursorKey)
-    aAliceHash = hashlib.blake2b()
+    aAliceHash = hashlib.sha256()
     aAliceHash.update(precursor.get_verifying_key().pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
     aAliceHash.update(pubRecipientKey.pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
     aAliceHash.update(dh_alice_point)
-    dAlice = aAliceHash.digest().hex()
+    dAlice = aAliceHash.digest()
     dAliceBN = hashToModInt(dAlice)
 
     f0 = (privInt * numbertheory.inverse_mod(dAliceBN, baseN)) % baseN
@@ -140,13 +143,13 @@ def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFra
 
         for _ in range(numSplit):
             id = ecdsa.util.randrange(baseN)
-            dShareHash = hashlib.blake2b()
+            dShareHash = hashlib.sha256()
             dShareHash.update(precursor.get_verifying_key().pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
             dShareHash.update(pubRecipientKey.pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
             dShareHash.update(dh_alice_point)
             dShareHash.update(id.to_bytes(32, byteorder='big', signed=False))
 
-            share = hashToModInt(dShareHash.digest().hex())
+            share = hashToModInt(dShareHash.digest())
             rk = hornerPolyEval(coeffs, share)
             kfrag = KFrag(str(id), str(rk), precursorPub)
             kfrags.append(kfrag)
@@ -161,11 +164,11 @@ def assembleReencryptFragment(privRecipient:str, reKeyFrags:List[ReKeyFrag])->by
     precursorPub = ecdsa.VerifyingKey.from_string(precursor, curve=ecdsa.SECP256k1)
 
     dh_Bob_poit = signer.ecdh_point(precursorPub.pubkey.point, privRecipientInt)
-    dBobHash = hashlib.blake2b()
+    dBobHash = hashlib.sha256()
     dBobHash.update(precursorPub.pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
     dBobHash.update(privRecipientKey.get_verifying_key().pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
     dBobHash.update(dh_Bob_poit)
-    dBob = dBobHash.digest().hex()
+    dBob = dBobHash.digest()
     dBobBN = hashToModInt(dBob)
 
     if len(reKeyFrags) == 1:
@@ -180,12 +183,12 @@ def assembleReencryptFragment(privRecipient:str, reKeyFrags:List[ReKeyFrag])->by
         vFinal = EccPoint()
         ids = list()
         for i in range(len(reKeyFrags)):
-            xs = hashlib.blake2b()
+            xs = hashlib.sha256()
             xs.update(precursorPub.pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
             xs.update(privRecipientKey.get_verifying_key().pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
             xs.update(dh_Bob_poit)
             xs.update(int(reKeyFrags[i].random).to_bytes(32, byteorder='big', signed=False))
-            share = hashToModInt(xs.digest().hex())
+            share = hashToModInt(xs.digest())
             ids.append(share)
 
         for i in range(len(ids)):
@@ -205,4 +208,4 @@ def assembleReencryptFragment(privRecipient:str, reKeyFrags:List[ReKeyFrag])->by
 
     eckey = ecdsa.VerifyingKey.from_public_point(share_key.point, ecdsa.SECP256k1, hashlib.sha256).\
         to_string(encoding="compressed")
-    return kdf(eckey.hex(), 32)
+    return kdf(eckey.hex(), encKeyLength)
