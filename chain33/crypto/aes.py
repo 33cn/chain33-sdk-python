@@ -1,9 +1,11 @@
+from binascii import b2a_hex, a2b_hex
+
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-from binascii import b2a_hex, a2b_hex
 
 AESPrivateKeyLength = 16
 AESBlockSize = 16
+
 
 def padding(text):
     if len(text) % AESBlockSize:
@@ -14,13 +16,16 @@ def padding(text):
     text = text + (pad * add)
     return text
 
+
 def unpadding(text):
     srclen = len(text)
     pad = text[srclen - 1]
     return text[:(srclen - pad)]
 
+
 def genetateAESKey():
     return get_random_bytes(AESPrivateKeyLength)
+
 
 def encrypt(data, key):
     iv = get_random_bytes(AESBlockSize)
@@ -29,7 +34,8 @@ def encrypt(data, key):
     text = padding(data)
     ciphertext = cipher.encrypt(text)
 
-    return b2a_hex(iv+ciphertext)
+    return b2a_hex(iv + ciphertext)
+
 
 def decrypt(data, key):
     data = a2b_hex(data)

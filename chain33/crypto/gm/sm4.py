@@ -1,7 +1,7 @@
-import binascii
 import random
 
 from gmssl import sm4
+
 
 class SM4Util(object):
 

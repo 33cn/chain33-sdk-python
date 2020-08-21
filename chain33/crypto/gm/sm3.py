@@ -1,5 +1,5 @@
-import binascii
 from gmssl import sm3
+
 
 class SM3Util(object):
     # SM3哈希函数

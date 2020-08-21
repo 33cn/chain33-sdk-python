@@ -1,7 +1,5 @@
-import account
-import pre
-from crypto import signer, aes
-from rpc.jsonclient import jsonclient
+from chain33.crypto import signer, aes, pre, account
+from chain33.rpc.jsonclient import client
 
 if __name__ == '__main__':
     serverPub = "02005d3a38feaff00f1b83014b2602d7b5b39506ddee7919dd66539b5428358f08"
@@ -20,9 +18,10 @@ if __name__ == '__main__':
 
     rekeys = list()
     for i in range(len(keyFragments)):
-        jclient = jsonclient(serverList[i])
-        result = jclient.SendKeyFragment(alice.publicKey, bob.publicKey, pubr, pubu, keyFragments[i].random, keyFragments[i].value,
-                                100000, dhproof.hex(), keyFragments[i].precurpub)
+        jclient = client(serverList[i])
+        result = jclient.SendKeyFragment(alice.publicKey, bob.publicKey, pubr, pubu, keyFragments[i].random,
+                                         keyFragments[i].value,
+                                         100000, dhproof.hex(), keyFragments[i].precurpub)
         rekey = jclient.Reencrypt(alice.publicKey, bob.publicKey)
         rekeys.append(rekey)
 
