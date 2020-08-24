@@ -1,0 +1,16 @@
+syntax = "proto3";
+package protobuf;
+//Manage管理合约
+message ManageAction {
+  oneof value {
+    ModifyConfig modify = 1;
+  }
+  int32 Ty = 2;
+}
+
+message ModifyConfig {
+  string key = 1;
+  string value = 2;
+  string op = 3;
+  string addr = 4;
+}

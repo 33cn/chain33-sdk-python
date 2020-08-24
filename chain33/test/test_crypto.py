@@ -1,10 +1,11 @@
-from crypto import signer, address
-from crypto.ed25519 import ed25519Signer
-from crypto.gm import sm2, sm4, sm3
-import account
+from chain33.crypto import signer, address, account
+from chain33.crypto.ed25519 import ed25519Signer
+from chain33.crypto.gm import sm2, sm4, sm3
+
 
 def trans(s):
     return "".join('%.2x' % x for x in s)
+
 
 if __name__ == '__main__':
     data = bytes([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10])
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     print(accountC.publicKey)
     print(accountC.address)
 
-    sig = ed25519Signer.sign(data, "97ac0e086e363315a8f30633b6d740b763533ed0439d9c696cd147b9a24437190221cf1192e7c3de734893d112ff7696e4d35bf265736e08ac708110d0b7ae97")
+    sig = ed25519Signer.sign(data,
+                             "97ac0e086e363315a8f30633b6d740b763533ed0439d9c696cd147b9a24437190221cf1192e7c3de734893d112ff7696e4d35bf265736e08ac708110d0b7ae97")
     ret = ed25519Signer.verify(data, sig, "0221cf1192e7c3de734893d112ff7696e4d35bf265736e08ac708110d0b7ae97")
     assert ret == True
-    

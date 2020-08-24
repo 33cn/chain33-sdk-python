@@ -7,16 +7,18 @@ import ecdsa
 from ecdsa import ellipticcurve, numbertheory
 from ecdsa.util import bit_length
 
-from crypto import signer
+from chain33.crypto import signer
 
 baseN = ecdsa.SECP256k1.order
 encKeyLength = 16
+
 
 class KFrag:
     def __init__(self, random, value, precurpub):
         self.random = random
         self.value = value
         self.precurpub = precurpub
+
 
 class ReKeyFrag:
     def __init__(self, reKeyR, reKeyU, random, precurpub):
@@ -25,8 +27,9 @@ class ReKeyFrag:
         self.random = random
         self.precurpub = precurpub
 
+
 class EccPoint():
-    def __init__(self, point:ellipticcurve.Point=None):
+    def __init__(self, point: ellipticcurve.Point = None):
         self.point = point
 
     def setEccPoint(self, pub: str):
@@ -39,32 +42,39 @@ class EccPoint():
             return EccPoint(self.point)
         return EccPoint(self.point + other.point)
 
-    def __mul__(self, other:int):
+    def __mul__(self, other: int):
         return EccPoint(self.point * other)
 
-def kdf(z, klen): # z为16进制表示的比特串（str），klen为密钥长度（单位byte）
+
+def kdf(z, klen):  # z为16进制表示的比特串（str），klen为密钥长度（单位byte）
     klen = int(klen)
     ct = 0x00000001
-    rcnt = ceil(klen/32)
+    rcnt = ceil(klen / 32)
     zin = [i for i in bytes.fromhex(z)]
     ha = b""
     for i in range(rcnt):
-        msg = zin  + [i for i in binascii.a2b_hex(('%08x' % ct).encode('utf8'))]
+        msg = zin + [i for i in binascii.a2b_hex(('%08x' % ct).encode('utf8'))]
         ha = ha + hashlib.sha256(bytes(msg)).digest()
         ct += 1
     return ha[0: klen]
 
+
 def generateEncryptKey(pubOwner):
     pubOwnerKey = ecdsa.VerifyingKey.from_string(bytes.fromhex(pubOwner), ecdsa.SECP256k1, hashlib.sha256)
 
-    priv_r = ecdsa.SigningKey.from_secret_exponent(int(signer.generatePrivateKey(), 16), ecdsa.SECP256k1, hashlib.sha256)
-    priv_u = ecdsa.SigningKey.from_secret_exponent(int(signer.generatePrivateKey(), 16), ecdsa.SECP256k1, hashlib.sha256)
+    priv_r = ecdsa.SigningKey.from_secret_exponent(int(signer.generatePrivateKey(), 16), ecdsa.SECP256k1,
+                                                   hashlib.sha256)
+    priv_u = ecdsa.SigningKey.from_secret_exponent(int(signer.generatePrivateKey(), 16), ecdsa.SECP256k1,
+                                                   hashlib.sha256)
 
     sum = (priv_r.privkey.secret_multiplier + priv_u.privkey.secret_multiplier) % baseN
     result = pubOwnerKey.pubkey.point * sum
 
-    encKey = ecdsa.VerifyingKey.from_public_point(result, ecdsa.SECP256k1, hashlib.sha256).to_string(encoding="compressed")
-    return kdf(encKey.hex(), encKeyLength), priv_r.get_verifying_key().to_string(encoding="compressed").hex(), priv_u.get_verifying_key().to_string(encoding="compressed").hex()
+    encKey = ecdsa.VerifyingKey.from_public_point(result, ecdsa.SECP256k1, hashlib.sha256).to_string(
+        encoding="compressed")
+    return kdf(encKey.hex(), encKeyLength), priv_r.get_verifying_key().to_string(
+        encoding="compressed").hex(), priv_u.get_verifying_key().to_string(encoding="compressed").hex()
+
 
 def hashToModInt(digest):
     orderBits = bit_length(baseN)
@@ -78,18 +88,20 @@ def hashToModInt(digest):
         return ret >> excess
     return ret
 
+
 # def hashToModInt(digest):
 #     sum = int(digest, 16)
 #     order_minus_1 = baseN - 1
 #
 #     return (sum % order_minus_1) + 1
 
-def makeShamirPolyCoeff(threshold)->List[int]:
+def makeShamirPolyCoeff(threshold) -> List[int]:
     coeffs = list()
-    for _  in range(threshold-1):
+    for _ in range(threshold - 1):
         key = int(signer.generatePrivateKey(), 16)
         coeffs.append(key)
     return coeffs
+
 
 def hornerPolyEval(coeff: List[int], x: int) -> int:
     result = coeff[0]
@@ -97,10 +109,12 @@ def hornerPolyEval(coeff: List[int], x: int) -> int:
         result = (result * x) + coeff[i]
     return result % baseN
 
-def calcPart(a:int, b:int)->int:
+
+def calcPart(a: int, b: int) -> int:
     p = (a - b) % baseN
     res = (a * numbertheory.inverse_mod(p, baseN)) % baseN
     return res
+
 
 def calcLambdaCoeff(id_i: int, selected_ids: List[int]) -> int:
     ids = [x for x in selected_ids if x != id_i]
@@ -114,7 +128,8 @@ def calcLambdaCoeff(id_i: int, selected_ids: List[int]) -> int:
 
     return result
 
-def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFrag]:
+
+def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold) -> List[KFrag]:
     precursorKey = int(signer.generatePrivateKey(), 16)
     precursor = ecdsa.SigningKey.from_secret_exponent(precursorKey, ecdsa.SECP256k1, hashlib.sha256)
 
@@ -133,7 +148,7 @@ def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFra
 
     precursorPub = precursor.get_verifying_key().to_string(encoding="compressed").hex()
     kfrags = list()
-    if numSplit == 1 :
+    if numSplit == 1:
         id = ecdsa.util.randrange(ecdsa.SECP256k1.order)
         kfrag = KFrag(str(id), str(f0), precursorPub)
         kfrags.append(kfrag)
@@ -144,7 +159,8 @@ def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFra
         for _ in range(numSplit):
             id = ecdsa.util.randrange(baseN)
             dShareHash = hashlib.sha256()
-            dShareHash.update(precursor.get_verifying_key().pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
+            dShareHash.update(
+                precursor.get_verifying_key().pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
             dShareHash.update(pubRecipientKey.pubkey.point.x().to_bytes(32, byteorder='big', signed=False))
             dShareHash.update(dh_alice_point)
             dShareHash.update(id.to_bytes(32, byteorder='big', signed=False))
@@ -156,7 +172,8 @@ def generateKeyFragment(privOwner, pubRecipient, numSplit, threshold)->List[KFra
 
     return kfrags
 
-def assembleReencryptFragment(privRecipient:str, reKeyFrags:List[ReKeyFrag])->bytes:
+
+def assembleReencryptFragment(privRecipient: str, reKeyFrags: List[ReKeyFrag]) -> bytes:
     privRecipientInt = int(privRecipient, 16)
     privRecipientKey = ecdsa.SigningKey.from_secret_exponent(privRecipientInt, ecdsa.SECP256k1, hashlib.sha256)
 
@@ -206,6 +223,6 @@ def assembleReencryptFragment(privRecipient:str, reKeyFrags:List[ReKeyFrag])->by
 
         share_key = (eFinal + vFinal) * dBobBN
 
-    eckey = ecdsa.VerifyingKey.from_public_point(share_key.point, ecdsa.SECP256k1, hashlib.sha256).\
+    eckey = ecdsa.VerifyingKey.from_public_point(share_key.point, ecdsa.SECP256k1, hashlib.sha256). \
         to_string(encoding="compressed")
     return kdf(eckey.hex(), encKeyLength)

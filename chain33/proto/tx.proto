@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package protobuf;
+
+message Transaction {
+  bytes     execer = 1;
+  bytes     payload = 2;
+  Signature signature = 3;
+  int64     fee = 4;
+  int64     expire = 5;
+  //随机ID，可以防止payload 相同的时候，交易重复
+  int64 nonce = 6;
+  //对方地址，如果没有对方地址，可以为空
+  string to = 7;
+  int32  groupCount = 8;
+  bytes  header = 9;
+  bytes  next = 10;
+}
+
+message Signature {
+  int32 ty = 1;
+  bytes pubkey = 2;
+  //当ty为5时，格式应该用RingSignature去解析
+  bytes signature = 3;
+}
+
+message Transactions {
+  repeated Transaction txs = 1;
+}
+
+
+
+// assert transfer struct
+message AssetsGenesis {
+  int64  amount = 2;
+  string returnAddress = 3;
+}
+
+message AssetsTransferToExec {
+  string cointoken = 1;
+  int64  amount = 2;
+  bytes  note = 3;
+  string execName = 4;
+  string to = 5;
+}
+
+message AssetsWithdraw {
+  string cointoken = 1;
+  int64  amount = 2;
+  bytes  note = 3;
+  string execName = 4;
+  string to = 5;
+}
+
+message AssetsTransfer {
+  string cointoken = 1;
+  int64  amount = 2;
+  bytes  note = 3;
+  string to = 4;
+}
+
+message Asset {
+  string exec = 1;
+  string symbol = 2;
+  int64  amount = 3;
+}
+
+// message for execs.coins
+message CoinsAction {
+  oneof value {
+    AssetsTransfer       transfer = 1;
+    AssetsWithdraw       withdraw = 4;
+    AssetsGenesis        genesis = 2;
+    AssetsTransferToExec transferToExec = 5;
+  }
+  int32 ty = 3;
+}
+
+// message for execs.token
+// action
+message TokenAction {
+  oneof value {
+    TokenPreCreate       tokenPreCreate = 1;
+    TokenFinishCreate    tokenFinishCreate = 2;
+    TokenRevokeCreate    tokenRevokeCreate = 3;
+    AssetsTransfer       transfer = 4;
+    AssetsWithdraw       withdraw = 5;
+    AssetsGenesis        genesis = 6;
+    AssetsTransferToExec transferToExec = 8;
+    TokenMint            tokenMint = 9;
+    TokenBurn            tokenBurn = 10;
+  }
+  int32 Ty = 7;
+}
+
+//创建token，支持最大精确度是8位小数,即存入数据库的实际总额需要放大1e8倍
+message TokenPreCreate {
+  string name = 1;
+  string symbol = 2;
+  string introduction = 3;
+  int64  total = 4;
+  int64  price = 5;
+  string owner = 6;
+  int32  category = 7;
+}
+
+message TokenFinishCreate {
+  string symbol = 1;
+  string owner = 2;
+}
+
+message TokenRevokeCreate {
+  string symbol = 1;
+  string owner = 2;
+}
+
+message TokenMint {
+  string symbol = 1;
+  int64  amount = 2;
+}
+
+message TokenBurn {
+  string symbol = 1;
+  int64  amount = 2;
+}
