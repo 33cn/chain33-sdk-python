@@ -2,25 +2,27 @@ syntax = "proto3";
 package protobuf;
 //后面如果有其他数据模型可继续往上面添加
 message Storage {
-  oneof value {
-    ContentOnlyNotaryStorage  contentStorage = 1;
-    HashOnlyNotaryStorage     hashStorage = 2;
-    LinkNotaryStorage         linkStorage = 3;
-    EncryptNotaryStorage      encryptStorage = 4;
-    EncryptShareNotaryStorage encryptShareStorage = 5;
-  }
-  int32 ty = 6;
+    oneof value {
+        ContentOnlyNotaryStorage  contentStorage      = 1;
+        HashOnlyNotaryStorage     hashStorage         = 2;
+        LinkNotaryStorage         linkStorage         = 3;
+        EncryptNotaryStorage      encryptStorage      = 4;
+        EncryptShareNotaryStorage encryptShareStorage = 5;
+        EncryptNotaryAdd          encryptAdd          = 6;
+    }
+    int32 ty = 7;
 }
 
 message StorageAction {
-  oneof value {
-    ContentOnlyNotaryStorage  contentStorage = 1;
-    HashOnlyNotaryStorage     hashStorage = 2;
-    LinkNotaryStorage         linkStorage = 3;
-    EncryptNotaryStorage      encryptStorage = 4;
-    EncryptShareNotaryStorage encryptShareStorage = 5;
-  }
-  int32 ty = 6;
+    oneof value {
+        ContentOnlyNotaryStorage  contentStorage      = 1;
+        HashOnlyNotaryStorage     hashStorage         = 2;
+        LinkNotaryStorage         linkStorage         = 3;
+        EncryptNotaryStorage      encryptStorage      = 4;
+        EncryptShareNotaryStorage encryptShareStorage = 5;
+        EncryptNotaryAdd          encryptAdd          = 6;
+    }
+    int32 ty = 7;
 }
 // 内容存证模型
 message ContentOnlyNotaryStorage {
@@ -86,6 +88,15 @@ message EncryptShareNotaryStorage {
 }
 
 service storage {}
+
+// 加密存证数据运算
+message EncryptNotaryAdd {
+    //源操作数存证索引
+    string key = 1;
+    //待操作数据
+    bytes encryptAdd = 2;
+}
+
 //根据txhash去状态数据库中查询存储内容
 message QueryStorage {
   string txHash = 1;
