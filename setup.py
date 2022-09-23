@@ -4,7 +4,7 @@ requires = [
     "ecdsa == 0.15",
     "gmssl == 3.2.1",
     "requests == 2.20.0",
-    "protobuf == 3.12.2",
+    "protobuf == 3.18.3",
     "pycryptodome == 3.9.7",
     "ed25519 == 1.5",
 ]
